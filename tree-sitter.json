@@ -1,0 +1,42 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "sea",
+      "camelcase": "sea",
+      "title": "Sea",
+      "scope": "source.sea",
+      "file-types": [
+        ".sea"
+      ],
+      "injection-regex": "^sea$",
+      "class-name": "TreeSitterSea"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Sea is a systems programming language that extends C with object-oriented programming, modern syntax inspired by Java and Rust, and background ownership analysis. Valid C is always valid Sea.",
+    "authors": [
+      {
+        "name": "Chris Anzilotti",
+        "email": "anzilottichr@gmail.com",
+        "url": ""
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-sea",
+      "funding": ""
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": true,
+    "python": false,
+    "rust": true,
+    "swift": false,
+    "zig": false
+  }
+}
