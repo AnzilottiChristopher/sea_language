@@ -20,14 +20,21 @@
 > Nail down what Sea looks like *before* writing a single line of transpiler code. Write 10–20 Sea programs by hand first. Decisions made here affect everything downstream.
 
 ### Tasks
-- [ ] Write a BNF/EBNF grammar spec for Sea syntax
-- [ ] Define how classes, methods, and fields look
-- [ ] Define how plain C passes through untouched
-- [ ] Document the `*` vs `&` distinction in the type system
-- [ ] Define `let` type inference rules
+- [x] Write a BNF/EBNF grammar spec for Sea syntax
+- [x] Define how classes, methods, and fields look
+- [x] Define how plain C passes through untouched
+- [x] Document the `*` vs `&` distinction in the type system
+- [x] Define `let` type inference rules
 - [ ] Define `Option<T>` and `Result<T>` types
 - [ ] Write 10–20 sample Sea programs by hand (classes, plain C, mixed)
 - [ ] Decide on file extension convention (`.sea`)
+- [ ]  Read Beej's Guide to C — `void*` and pointer casting section
+- [ ]  Study `qsort` as a `void*` polymorphism example
+- [ ]  Understand Java generics (type erasure)
+- [ ]  Understand C++ templates (code generation per type)
+- [ ]  Understand how transpile-to-C languages fake generics under the hood
+- [ ]  Decide: expose `void*` directly, hide behind abstraction, or add real generics
+- [ ]  Decide: what does `void` mean in Sea-style functions vs C-style functions
 
 ### References to read
 - [x] [Crafting Interpreters — Representing Code (grammars)](https://craftinginterpreters.com/representing-code.html)
@@ -36,6 +43,7 @@
 - [ ] [Crafting Interpreters — Types of Values](https://craftinginterpreters.com/types-of-values.html)
 - [ ] [Java OOP reference (for syntax inspiration)](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
 - [ ] [Rust structs (for syntax inspiration)](https://doc.rust-lang.org/book/ch05-00-structs.html)
+- [ ] [Beej Guide for void*](https://beej.us/guide/bgc/)
 
 ---
 
@@ -68,7 +76,7 @@
 - [ ] [Tree-sitter (alternative parser approach)](https://tree-sitter.github.io/tree-sitter/)
 
 ---
-## Phase 2.5 — Formatter
+## Phase 2.5 — Formatter (Optional)
 - Create the formatter that takes private/public into (nothing)/pub
 - Format x=1+2 to x = 1 + 2
 - etc
@@ -221,5 +229,9 @@ Keep this section as a record of the choices made so far.
 - [ ] [GObject reference manual](https://docs.gtk.org/gobject/) — OOP in C done at scale
 
 ---
+
+For networks when we get there:
+![[Pasted image 20260610000522.png]]
+
 
 *Generated with Claude — Sea Language planning session*

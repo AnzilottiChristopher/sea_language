@@ -1,0 +1,99 @@
+// -> Comments
+
+// Example class call
+
+class class_name {
+    // Public
+    pub int *x;
+    // Possibly get rid of this: public int y;
+
+    //Need a constructor could just go basic java
+    pub class_name() {
+        this.x = malloc(sizeof(int));
+        //Since malloc need drop method
+        //Also warn since we will have actual array keywords at some point
+    }
+
+    pub method() {
+
+    }
+
+    //Private
+    int z;
+
+    method() {
+
+    }
+
+
+    // Returning data
+    //Allow but warn this is legacy C code
+    int method() {
+        return 5;
+    }
+    OR
+    //Use this one for Sea Code
+    method() -> int {
+        return 5;
+    }
+
+    // Optional return of void
+    method() -> void {
+
+    }
+    method() -> void* {
+        //this method allows for return of void* shenanigans
+    }
+
+    // Code Parameters
+    method(int x, String y) {
+
+    }
+
+    // Function that frees everything
+    pub drop() {
+        free(this.x);
+    }
+
+
+    // References and pointers
+    pub method(int &x) {
+        //Simple borrow NEVER OWNS
+    }
+    pub method(int *x) {
+        // Warn that an optional will be better and need to handle null
+    }
+
+}
+
+class animal {}
+interface bark {
+    pub bark() {
+        print("woof");
+    }
+}
+
+// Classes can only inherit one but can implement multiple
+class dog inherit animal implements bark {
+
+}
+
+struct Point {
+    // Implicitly public
+    int x;
+    int y;
+}
+
+
+// Main Class
+int main() {
+    // Construction of objects
+    class_name ex = class_name();
+
+
+    // How should deconstruction handle?
+    // Objects forced to have a deconstruction method if they alloc/malloc
+    ex.drop();
+}
+
+//Notes
