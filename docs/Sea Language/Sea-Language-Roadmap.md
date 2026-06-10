@@ -33,8 +33,8 @@
 - [ ]  Understand Java generics (type erasure)
 - [ ]  Understand C++ templates (code generation per type)
 - [ ]  Understand how transpile-to-C languages fake generics under the hood
-- [ ]  Decide: expose `void*` directly, hide behind abstraction, or add real generics
-- [ ]  Decide: what does `void` mean in Sea-style functions vs C-style functions
+- [x]  Decide: expose `void*` directly, hide behind abstraction, or add real generics
+- [x]  Decide: what does `void` mean in Sea-style functions vs C-style functions
 
 ### References to read
 - [x] [Crafting Interpreters — Representing Code (grammars)](https://craftinginterpreters.com/representing-code.html)
@@ -52,9 +52,9 @@
 > Turn raw Sea source text into a structured AST your transpiler can reason about. This is the input stage. The hardest single step here is the parser — take your time with it.
 
 ### Tasks
-- [ ] Build the lexer (tokenise keywords, identifiers, symbols, literals)
-- [ ] Handle plain C tokens (no changes needed, C tokens are well-known)
-- [ ] Add Sea-specific tokens (`class`, `extends`, `let`, `match`, `own` if used)
+- [x] Build the lexer (tokenise keywords, identifiers, symbols, literals)
+- [x] Handle plain C tokens (no changes needed, C tokens are well-known)
+- [x] Add Sea-specific tokens (`class`, `extends`, `let`, `match`, `own` if used)
 - [ ] Design AST node types as Rust enums/structs
   - [ ] `ClassDecl` — class name, fields, methods, parent
   - [ ] `MethodDecl` — name, params, return type, body
