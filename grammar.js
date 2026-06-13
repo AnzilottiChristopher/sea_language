@@ -40,33 +40,31 @@ export default grammar(C, {
                 $.class_declaration,
                 $.interface_declaration,
                 $.main_declaration,
-                $.function_definition, // C functions
-                $.declaration, // C variable declarations
-                $.linkage_specification, // extern "C" etc
-                $.preproc_include, // #include
+                $.function_definition,
+                $.declaration,
+                $.linkage_specification,
+                $.preproc_include,
                 $.preproc_def,
             ),
 
         interface_declaration: ($) =>
             seq(
                 "interface",
-                $.identifier,
+                field("name", $.identifier),
                 "{",
                 repeat($.interface_method),
                 "}",
             ),
+
         interface_method: ($) =>
             seq(
-                optional("pub"),
-                $.identifier,
+                field("visibility", optional("pub")),
+                field("name", $.identifier),
                 "(",
-                optional($.sea_parameter_list),
+                field("parameters", optional($.sea_parameter_list)),
                 ")",
-                optional(seq("->", $.return_type)),
-                choice(
-                    $.compound_statement, // default implementation
-                    ";", // no implementation — required by subclass
-                ),
+                field("return_type", optional(seq("->", $.return_type))),
+                choice(field("body", $.compound_statement), ";"),
             ),
 
         main_declaration: ($) =>
@@ -75,28 +73,34 @@ export default grammar(C, {
                 seq(
                     "main",
                     "(",
-                    optional($.sea_parameter_list),
+                    field("parameters", optional($.sea_parameter_list)),
                     ")",
                     "->",
                     "int",
-                    $.compound_statement,
+                    field("body", $.compound_statement),
                 ),
-                // C style — optional, might be handled by C grammar already
+                // C style
                 seq(
                     "int",
                     "main",
                     "(",
-                    optional($.sea_parameter_list),
+                    field("parameters", optional($.sea_parameter_list)),
                     ")",
-                    $.compound_statement,
+                    field("body", $.compound_statement),
                 ),
             ),
+
         implements_clause: ($) =>
             seq(
                 "implements",
-                seq($.identifier, repeat(seq(",", $.identifier))),
+                field(
+                    "interfaces",
+                    seq($.identifier, repeat(seq(",", $.identifier))),
+                ),
             ),
-        inherit_clause: ($) => seq("inherit", $.identifier),
+
+        inherit_clause: ($) => seq("inherit", field("parent", $.identifier)),
+
         _class_member: ($) =>
             choice(
                 $.field_declaration,
@@ -104,60 +108,84 @@ export default grammar(C, {
                 $.method_declaration,
                 $.drop_declaration,
             ),
+
         class_declaration: ($) =>
             seq(
                 "class",
-                $.identifier,
-                optional($.inherit_clause),
-                optional($.implements_clause),
+                field("name", $.identifier),
+                field("inherit", optional($.inherit_clause)),
+                field("implements", optional($.implements_clause)),
                 "{",
-                repeat($._class_member),
+                field("body", repeat($._class_member)),
                 "}",
             ),
 
         constructor_declaration: ($) =>
             seq(
-                optional("pub"),
-                $.identifier,
+                field("visibility", optional("pub")),
+                field("name", $.identifier),
                 "(",
-                optional($.sea_parameter_list),
+                field("parameters", optional($.sea_parameter_list)),
                 ")",
-                $.compound_statement,
+                field("body", $.compound_statement),
             ),
+
         drop_declaration: ($) =>
-            seq(optional("pub"), "drop", "(", ")", $.compound_statement),
+            seq(
+                field("visibility", optional("pub")),
+                "drop",
+                "(",
+                ")",
+                field("body", $.compound_statement),
+            ),
+
         method_declaration: ($) => choice($.sea_style_method, $.c_style_method),
+
         sea_style_method: ($) =>
             seq(
-                optional("pub"),
-                $.identifier,
+                field("visibility", optional("pub")),
+                field("name", $.identifier),
                 "(",
-                optional($.sea_parameter_list),
+                field("parameters", optional($.sea_parameter_list)),
                 ")",
-                optional(seq("->", $.return_type)),
-                $.compound_statement,
+                field("return_type", optional(seq("->", $.return_type))),
+                field("body", $.compound_statement),
             ),
+
         c_style_method: ($) =>
             seq(
-                optional("pub"),
-                $.type,
-                $.identifier,
+                field("visibility", optional("pub")),
+                field("return_type", $.type),
+                field("name", $.identifier),
                 "(",
-                optional($.sea_parameter_list),
+                field("parameters", optional($.sea_parameter_list)),
                 ")",
-                $.compound_statement,
+                field("body", $.compound_statement),
             ),
 
         sea_parameter_list: ($) =>
             seq($.sea_parameter, repeat(seq(",", $.sea_parameter))),
-        sea_parameter: ($) => seq($.type, $.identifier),
+
+        sea_parameter: ($) =>
+            seq(field("type", $.type), field("name", $.identifier)),
 
         field_declaration: ($) =>
-            seq(optional("pub"), $.type, $.identifier, ";"),
+            seq(
+                field("visibility", optional("pub")),
+                field("type", $.type),
+                field("name", $.identifier),
+                ";",
+            ),
 
         base_type: ($) =>
             choice("int", "float", "double", "char", "String", $.identifier),
-        type: ($) => seq($.base_type, optional(choice("*", "&"))),
+
+        type: ($) =>
+            seq(
+                field("base", $.base_type),
+                field("modifier", optional(choice("*", "&"))),
+            ),
+
         return_type: ($) => choice($.type, "void", seq("void", "*")),
 
         identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_]*/,

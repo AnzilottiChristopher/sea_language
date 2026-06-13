@@ -55,16 +55,16 @@
 - [x] Build the lexer (tokenise keywords, identifiers, symbols, literals)
 - [x] Handle plain C tokens (no changes needed, C tokens are well-known)
 - [x] Add Sea-specific tokens (`class`, `extends`, `let`, `match`, `own` if used)
-- [ ] Design AST node types as Rust enums/structs
+- [x] Design AST node types as Rust enums/structs
   - [ ] `ClassDecl` — class name, fields, methods, parent
   - [ ] `MethodDecl` — name, params, return type, body
   - [ ] `FieldDecl` — name, type, pointer kind (`*` or `&`)
   - [ ] `LetDecl` — name, inferred type, initialiser
   - [ ] `CPassthrough` — raw C text, pass verbatim
   - [ ] `ForEach`, `MatchExpr`, `LambdaExpr`
-- [ ] Build the parser (recursive descent recommended)
-- [ ] Handle operator precedence (Pratt parsing for expressions)
-- [ ] Store source location (file, line, col) in every AST node — needed for error messages later
+- [x] Build the parser (recursive descent recommended)
+- [x] Handle operator precedence (Pratt parsing for expressions)
+- [x] Store source location (file, line, col) in every AST node — needed for error messages later
 
 ### References to read
 - [ ] [Crafting Interpreters — Scanning (lexer)](https://craftinginterpreters.com/scanning.html)
