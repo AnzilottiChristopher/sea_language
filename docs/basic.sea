@@ -1,10 +1,23 @@
 #include <stdio.h>
 
-class Dog {
+class Animal {
     pub String name;
 
-    pub Dog(String name) {
+    pub Animal(String name) {
         this.name = name;
+    }
+
+    pub speak() {
+        printf("...\n");
+    }
+}
+
+class Dog inherit Animal {
+    pub String breed;
+
+    pub Dog(String name, String breed) {
+        this.name = name;
+        this.breed = breed;
     }
 
     pub bark() {
@@ -13,6 +26,7 @@ class Dog {
 }
 
 main() -> int {
-    Dog dog = new Dog("Rex");
+    Dog dog = new Dog("Rex", "Labrador");
     dog.bark();
+    dog.speak();
 }
