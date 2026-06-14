@@ -30,6 +30,7 @@ export default grammar(C, {
         [$._type_specifier, $._old_style_parameter_list],
         // Sea specific
         [$.constructor_declaration, $.sea_style_method],
+        [$.new_expression],
     ],
 
     rules: {
@@ -47,6 +48,15 @@ export default grammar(C, {
                 $.preproc_def,
             ),
 
+        new_expression: ($) =>
+            seq(
+                "new",
+                field("type", $.identifier),
+                field("arguments", optional($.argument_list)),
+            ),
+        // @ts-ignore
+        _expression: ($) =>
+            choice($.new_expression, ...C.grammar.rules._expression.members),
         interface_declaration: ($) =>
             seq(
                 "interface",

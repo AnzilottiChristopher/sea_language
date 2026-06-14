@@ -6270,6 +6270,10 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "new_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "_expression_not_binary"
         },
         {
@@ -9358,6 +9362,39 @@
         }
       ]
     },
+    "new_expression": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "new"
+        },
+        {
+          "type": "FIELD",
+          "name": "type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "arguments",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "argument_list"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        }
+      ]
+    },
     "interface_declaration": {
       "type": "SEQ",
       "members": [
@@ -10220,6 +10257,9 @@
     [
       "constructor_declaration",
       "sea_style_method"
+    ],
+    [
+      "new_expression"
     ]
   ],
   "precedences": [],

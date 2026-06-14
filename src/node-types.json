@@ -112,6 +112,10 @@
         "named": true
       },
       {
+        "type": "new_expression",
+        "named": true
+      },
+      {
         "type": "null",
         "named": true
       },
@@ -2649,6 +2653,32 @@
     "fields": {}
   },
   {
+    "type": "new_expression",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "null",
     "named": true,
     "fields": {}
@@ -4734,6 +4764,10 @@
   {
     "type": "ms_unsigned_ptr_modifier",
     "named": true
+  },
+  {
+    "type": "new",
+    "named": false
   },
   {
     "type": "noreturn",
