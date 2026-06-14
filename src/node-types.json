@@ -3619,13 +3619,9 @@
         ]
       },
       "return_type": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "->",
-            "named": false
-          },
           {
             "type": "return_type",
             "named": true

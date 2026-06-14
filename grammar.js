@@ -148,7 +148,7 @@ export default grammar(C, {
                 "(",
                 field("parameters", optional($.sea_parameter_list)),
                 ")",
-                field("return_type", optional(seq("->", $.return_type))),
+                optional(seq("->", field("return_type", $.return_type))),
                 field("body", $.compound_statement),
             ),
 

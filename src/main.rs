@@ -25,7 +25,5 @@ fn main() -> std::io::Result<()> {
     //TODO make the file path reflect the actual class
     let mut file = File::create("test.c")?;
 
-    println!("{}", output);
-
     write!(file, "{}", output)
 }
