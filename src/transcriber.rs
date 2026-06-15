@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use crate::parse_sea;
+use std::{collections::HashMap, path::PathBuf};
 use tree_sitter::{Node, Tree};
 
 struct ClassInfo {
@@ -78,7 +79,12 @@ fn collect_class_info(node: &Node, source: &String) -> ClassInfo {
     }
 }
 
-pub fn analyze(tree: Tree, source: &String) -> String {
+pub fn analyze(
+    tree: Tree,
+    source: &String,
+    current_file: &PathBuf,
+    imported_c_files: &mut Vec<PathBuf>,
+) -> String {
     let root = tree.root_node();
     let mut output = String::new();
     let mut class_table: HashMap<String, ClassInfo> = HashMap::new();
@@ -89,6 +95,24 @@ pub fn analyze(tree: Tree, source: &String) -> String {
         if child.kind() == "class_declaration" {
             let info = collect_class_info(&child, source);
             class_table.insert(info.name.clone(), info);
+        } else if child.kind() == "import_declaration" {
+            let path_node = child.child_by_field_name("path").unwrap();
+            let path_text = &source[path_node.start_byte()..path_node.end_byte()];
+            let path_str = path_text.trim_matches('"');
+            let current_dir = current_file.parent().unwrap_or(std::path::Path::new("."));
+            let imported_path = current_dir.join(format!("{}.sea", path_str));
+
+            if imported_path.exists() {
+                let (imported_tree, imported_source) = parse_sea(&imported_path);
+                let imported_root = imported_tree.root_node();
+                let mut cursor2 = imported_root.walk();
+                for imported_child in imported_root.children(&mut cursor2) {
+                    if imported_child.kind() == "class_declaration" {
+                        let info = collect_class_info(&imported_child, &imported_source);
+                        class_table.insert(info.name.clone(), info);
+                    }
+                }
+            }
         }
     }
 
@@ -107,6 +131,14 @@ pub fn analyze(tree: Tree, source: &String) -> String {
             "main_declaration" => {
                 output.push_str(&transpile_main(&child, source, &class_table));
             }
+            "import_declaration" => {
+                output.push_str(&transpile_import(
+                    &child,
+                    source,
+                    current_file,
+                    imported_c_files,
+                ));
+            }
             _ => {
                 let text = &source[child.start_byte()..child.end_byte()];
                 output.push_str(text);
@@ -115,6 +147,144 @@ pub fn analyze(tree: Tree, source: &String) -> String {
         }
     }
 
+    output
+}
+
+fn transpile_import(
+    node: &Node,
+    source: &String,
+    current_file: &std::path::Path,
+    imported_c_files: &mut Vec<PathBuf>,
+) -> String {
+    let path_node = node.child_by_field_name("path").unwrap();
+    let path_text = &source[path_node.start_byte()..path_node.end_byte()];
+
+    // strip quotes
+    let path_str = path_text.trim_matches('"');
+
+    // resolve relative to current file
+    let current_dir = current_file.parent().unwrap_or(std::path::Path::new("."));
+    let imported_sea_path = current_dir.join(format!("{}.sea", path_str));
+    let imported_c_path = current_dir.join(format!("{}.c", path_str));
+    let imported_h_path = current_dir.join(format!("{}.h", path_str));
+
+    // check imported file exists
+    if !imported_sea_path.exists() {
+        eprintln!("Error: cannot find imported file {:?}", imported_sea_path);
+        std::process::exit(1);
+    }
+
+    // parse and transpile the imported file
+    let (imported_tree, imported_source) = parse_sea(&imported_sea_path);
+    let header = generate_header(&imported_tree, &imported_source, path_str);
+    let imported_c = analyze(
+        imported_tree,
+        &imported_source,
+        &imported_sea_path,
+        imported_c_files,
+    );
+
+    imported_c_files.push(imported_c_path.clone());
+    // write the generated .c file
+    std::fs::write(&imported_c_path, &imported_c).unwrap();
+    // generate .h file with forward declarations
+    std::fs::write(&imported_h_path, &header).unwrap();
+
+    // emit #include in current file
+    format!("#include \"{}.h\"\n", path_str)
+}
+
+fn generate_header(
+    imported_tree: &tree_sitter::Tree,
+    imported_source: &String,
+    module_name: &str,
+) -> String {
+    let guard = module_name
+        .to_uppercase()
+        .replace("/", "_")
+        .replace("-", "_")
+        .replace(".", "_")
+        .trim_start_matches('_')
+        .to_string();
+    let mut output = String::new();
+
+    output.push_str(&format!("#ifndef {}_H\n", guard));
+    output.push_str(&format!("#define {}_H\n\n", guard));
+
+    let root = imported_tree.root_node();
+    let mut cursor = root.walk();
+    for child in root.children(&mut cursor) {
+        if child.kind() == "class_declaration" {
+            let name_node = child.child_by_field_name("name").unwrap();
+            let class_name = &imported_source[name_node.start_byte()..name_node.end_byte()];
+
+            // full struct definition — not just forward declaration
+            output.push_str(&format!("typedef struct {class_name} {class_name};\n"));
+            output.push_str(&format!("struct {class_name} {{\n"));
+
+            // emit fields
+            let mut cursor2 = child.walk();
+            for member in child.children(&mut cursor2) {
+                if member.kind() == "field_declaration" {
+                    let type_node = member.child_by_field_name("type").unwrap();
+                    let name_node = member.child_by_field_name("name").unwrap();
+                    let type_text = &imported_source[type_node.start_byte()..type_node.end_byte()];
+                    let name_text = &imported_source[name_node.start_byte()..name_node.end_byte()];
+                    let type_text = transpile_type(type_text);
+                    output.push_str(&format!("    {type_text} {name_text};\n"));
+                }
+            }
+            output.push_str("};\n\n");
+
+            // single pass for constructor and method declarations
+            let mut cursor3 = child.walk();
+            for member in child.children(&mut cursor3) {
+                match member.kind() {
+                    "constructor_declaration" => {
+                        let con_name_node = member.child_by_field_name("name").unwrap();
+                        let con_name =
+                            &imported_source[con_name_node.start_byte()..con_name_node.end_byte()];
+
+                        if con_name == class_name {
+                            // real constructor
+                            let params_str = match member.child_by_field_name("parameters") {
+                                Some(p) => transpile_params(&p, imported_source),
+                                None => String::new(),
+                            };
+                            let params_part = if params_str.is_empty() {
+                                String::new()
+                            } else {
+                                format!(", {params_str}")
+                            };
+                            output.push_str(&format!(
+                                "void {class_name}_init({class_name} *self{params_part});\n"
+                            ));
+                        } else {
+                            // GLR matched method as constructor — declare as method
+                            output.push_str(&format!(
+                                "void {class_name}_{con_name}({class_name} *self);\n"
+                            ));
+                        }
+                    }
+                    "method_declaration" => {
+                        let method_node = member.child(0).unwrap();
+                        if let Some(method_name_node) = method_node.child_by_field_name("name") {
+                            let method_name = &imported_source
+                                [method_name_node.start_byte()..method_name_node.end_byte()];
+                            output.push_str(&format!(
+                                "void {class_name}_{method_name}({class_name} *self);\n"
+                            ));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            output.push_str("\n");
+        }
+    }
+
+    output.push_str(&format!("#endif // {}_H\n", guard));
     output
 }
 

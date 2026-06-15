@@ -1,4 +1,0 @@
-import Dog from "./dog";
-
-int main() {
-}
