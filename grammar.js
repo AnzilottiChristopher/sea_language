@@ -41,6 +41,7 @@ export default grammar(C, {
                 $.class_declaration,
                 $.interface_declaration,
                 $.main_declaration,
+                $.import_declaration,
                 $.function_definition,
                 $.declaration,
                 $.linkage_specification,
@@ -64,6 +65,21 @@ export default grammar(C, {
                 "{",
                 repeat($.interface_method),
                 "}",
+            ),
+
+        import_declaration: ($) =>
+            seq(
+                "import",
+                field(
+                    "imports",
+                    choice(
+                        "*",
+                        seq($.identifier, repeat(seq(",", $.identifier))),
+                    ),
+                ),
+                "from",
+                field("path", $.string),
+                ";",
             ),
 
         interface_method: ($) =>

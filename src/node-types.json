@@ -2258,6 +2258,40 @@
     }
   },
   {
+    "type": "import_declaration",
+    "named": true,
+    "fields": {
+      "imports": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "*",
+            "named": false
+          },
+          {
+            "type": ",",
+            "named": false
+          },
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "path": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "inherit_clause",
     "named": true,
     "fields": {
@@ -3972,6 +4006,10 @@
           "named": true
         },
         {
+          "type": "import_declaration",
+          "named": true
+        },
+        {
           "type": "interface_declaration",
           "named": true
         },
@@ -4714,6 +4752,10 @@
     "named": false
   },
   {
+    "type": "from",
+    "named": false
+  },
+  {
     "type": "goto",
     "named": false
   },
@@ -4727,6 +4769,10 @@
   },
   {
     "type": "implements",
+    "named": false
+  },
+  {
+    "type": "import",
     "named": false
   },
   {
@@ -4832,6 +4878,10 @@
   {
     "type": "static",
     "named": false
+  },
+  {
+    "type": "string",
+    "named": true
   },
   {
     "type": "string_content",
