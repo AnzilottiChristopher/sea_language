@@ -1,15 +1,8 @@
 use std::path::PathBuf;
 use tree_sitter::Parser;
-use tree_sitter_language::LanguageFn;
-
-unsafe extern "C" {
-    fn tree_sitter_sea() -> *const ();
-}
-
-pub static LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sea) };
 
 pub fn parse_sea(path: &PathBuf) -> (tree_sitter::Tree, String) {
-    let language: tree_sitter::Language = LANGUAGE.into();
+    let language: tree_sitter::Language = tree_sitter_sea::LANGUAGE.into();
     let mut parser = Parser::new();
     parser
         .set_language(&language)

@@ -34,6 +34,15 @@ fn main() {
             println!("Transpiled to {}", output_path.display());
         }
         Commands::Compile { file } => {
+            let check_status = std::process::Command::new("lighthouse")
+                .arg(&file)
+                .status()
+                .expect("lighthouse not found - install it with cargo install");
+            if !check_status.success() {
+                eprintln!("Lighthouse found issues — fix them before compiling");
+                std::process::exit(1);
+            }
+
             // transpile first
             let (sea_tree, source) = parse_sea(&file);
             let output = analyze(sea_tree, &source);
@@ -52,6 +61,17 @@ fn main() {
             println!("Compiled to {}", bin_path.display());
         }
         Commands::Run { file } => {
+            // run lighthouse first
+            let check_status = std::process::Command::new("lighthouse")
+                .arg(&file)
+                .status()
+                .expect("lighthouse not found — install it with cargo install");
+
+            if !check_status.success() {
+                eprintln!("Lighthouse found issues — fix them before compiling");
+                std::process::exit(1);
+            }
+
             // transpile
             let (sea_tree, source) = parse_sea(&file);
             let output = analyze(sea_tree, &source);

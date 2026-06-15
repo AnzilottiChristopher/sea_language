@@ -231,6 +231,7 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-c",
  "tree-sitter-language",
+ "tree-sitter-sea",
 ]
 
 [[package]]
@@ -334,6 +335,15 @@ name = "tree-sitter-language"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "009994f150cc0cd50ff54917d5bc8bffe8cad10ca10d81c34da2ec421ae61782"
+
+[[package]]
+name = "tree-sitter-sea"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "tree-sitter",
+ "tree-sitter-language",
+]
 
 [[package]]
 name = "unicode-ident"
