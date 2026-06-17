@@ -31,6 +31,7 @@ export default grammar(C, {
         // Sea specific
         [$.constructor_declaration, $.sea_style_method],
         [$.new_expression],
+        [$.this_expression],
     ],
 
     rules: {
@@ -55,9 +56,17 @@ export default grammar(C, {
                 field("type", $.identifier),
                 field("arguments", optional($.argument_list)),
             ),
+
+        this_expression: ($) => "this",
+
         // @ts-ignore
         _expression: ($) =>
-            choice($.new_expression, ...C.grammar.rules._expression.members),
+            choice(
+                $.new_expression,
+                $.this_expression,
+                ...C.grammar.rules._expression.members,
+            ),
+
         interface_declaration: ($) =>
             seq(
                 "interface",

@@ -148,6 +148,10 @@
         "named": true
       },
       {
+        "type": "this_expression",
+        "named": true
+      },
+      {
         "type": "true",
         "named": true
       },
@@ -4897,6 +4901,10 @@
   },
   {
     "type": "system_lib_string",
+    "named": true
+  },
+  {
+    "type": "this_expression",
     "named": true
   },
   {
