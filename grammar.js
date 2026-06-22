@@ -29,7 +29,6 @@ export default grammar(C, {
         [$.parameter_list, $._old_style_parameter_list],
         [$._type_specifier, $._old_style_parameter_list],
         // Sea specific
-        [$.constructor_declaration, $.sea_style_method],
         [$.new_expression],
         [$.this_expression],
     ],
@@ -139,7 +138,7 @@ export default grammar(C, {
         _class_member: ($) =>
             choice(
                 $.field_declaration,
-                $.constructor_declaration,
+                $.init_declaration,
                 $.method_declaration,
                 $.drop_declaration,
             ),
@@ -155,10 +154,10 @@ export default grammar(C, {
                 "}",
             ),
 
-        constructor_declaration: ($) =>
+        init_declaration: ($) =>
             seq(
                 field("visibility", optional("pub")),
-                field("name", $.identifier),
+                "init",
                 "(",
                 field("parameters", optional($.sea_parameter_list)),
                 ")",

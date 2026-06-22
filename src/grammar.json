@@ -9760,7 +9760,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "constructor_declaration"
+          "name": "init_declaration"
         },
         {
           "type": "SYMBOL",
@@ -9840,7 +9840,7 @@
         }
       ]
     },
-    "constructor_declaration": {
+    "init_declaration": {
       "type": "SEQ",
       "members": [
         {
@@ -9860,12 +9860,8 @@
           }
         },
         {
-          "type": "FIELD",
-          "name": "name",
-          "content": {
-            "type": "SYMBOL",
-            "name": "identifier"
-          }
+          "type": "STRING",
+          "value": "init"
         },
         {
           "type": "STRING",
@@ -10328,10 +10324,6 @@
     [
       "_type_specifier",
       "_old_style_parameter_list"
-    ],
-    [
-      "constructor_declaration",
-      "sea_style_method"
     ],
     [
       "new_expression"

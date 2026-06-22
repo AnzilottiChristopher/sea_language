@@ -235,3 +235,68 @@ For networks when we get there:
 
 
 *Generated with Claude — Sea Language planning session*
+
+
+### Build order
+
+#### 1. `symbol_table.rs` — Build this first
+
+Everything depends on it. No external dependencies — just pure Rust data structures. Build and test it in isolation before touching anything else.
+
+**Complete when:** You can create a `SymbolTable`, insert a `ClassInfo`, look up classes by name, get completions for a class, and remove all symbols from a file.
+
+---
+
+#### 2. `indexer.rs` — Build this second
+
+Depends on `symbol_table.rs` and `tree-sitter-sea`. No LSP knowledge needed — just parsing and extracting. You can test this standalone by pointing it at a `.sea` file and printing what it finds.
+
+**Complete when:** Given a workspace path it finds all `.sea` files, parses each one, extracts pub classes/fields/methods with correct line numbers, and populates the symbol table correctly.
+
+---
+
+#### 3. `main.rs` — Build this third
+
+Sets up the tokio runtime and tower-lsp server. At this stage the backend can be mostly empty — just enough to start the server and not crash. The editor should be able to connect.
+
+**Complete when:** The LSP starts, the editor connects without errors, and you see it running in Neovim with `:LspInfo`.
+
+---
+
+#### 4. `backend.rs` — Build this last, one feature at a time
+
+Depends on everything else. Build each LSP feature separately in this order:
+
+```
+4a — initialize
+     index the workspace on startup
+     
+4b — did_open / did_change / did_save
+     re-index files as they change
+     
+4c — hover
+     show class info when hovering over a type name
+     
+4d — completion
+     show pub fields and methods after typing dot
+     
+4e — goto_definition
+     jump to class declaration
+```
+
+**Complete when:** All five features work correctly in Neovim.
+
+---
+
+### The dependency chain visualized
+
+```
+symbol_table.rs
+    ↓
+indexer.rs
+    ↓
+main.rs
+    ↓
+backend.rs
+    4a → 4b → 4c → 4d → 4e
+```

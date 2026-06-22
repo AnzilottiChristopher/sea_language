@@ -1055,15 +1055,15 @@
         "required": false,
         "types": [
           {
-            "type": "constructor_declaration",
-            "named": true
-          },
-          {
             "type": "drop_declaration",
             "named": true
           },
           {
             "type": "field_declaration",
+            "named": true
+          },
+          {
+            "type": "init_declaration",
             "named": true
           },
           {
@@ -1269,52 +1269,6 @@
           {
             "type": "_expression",
             "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "constructor_declaration",
-    "named": true,
-    "fields": {
-      "body": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "compound_statement",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "parameters": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "sea_parameter_list",
-            "named": true
-          }
-        ]
-      },
-      "visibility": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "pub",
-            "named": false
           }
         ]
       }
@@ -2306,6 +2260,42 @@
           {
             "type": "identifier",
             "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "init_declaration",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "compound_statement",
+            "named": true
+          }
+        ]
+      },
+      "parameters": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "sea_parameter_list",
+            "named": true
+          }
+        ]
+      },
+      "visibility": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "pub",
+            "named": false
           }
         ]
       }
@@ -4781,6 +4771,10 @@
   },
   {
     "type": "inherit",
+    "named": false
+  },
+  {
+    "type": "init",
     "named": false
   },
   {

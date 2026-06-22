@@ -4,7 +4,7 @@ use tree_sitter::{Node, Tree};
 
 struct ClassInfo {
     name: String,
-    fields: Vec<(String, String)>, // (type, name)
+    fields: Vec<(String, String)>,
     parent: Option<String>,
     methods: Vec<String>,
     constructor_params: Vec<(String, String)>,
@@ -37,33 +37,27 @@ fn collect_class_info(node: &Node, source: &String) -> ClassInfo {
             "method_declaration" => {
                 let method_node = child.child(0).unwrap();
                 let name_node = method_node.child_by_field_name("name").unwrap();
-                let method_name = source[name_node.start_byte()..name_node.end_byte()].to_string();
+                let method_name =
+                    source[name_node.start_byte()..name_node.end_byte()].to_string();
                 methods.push(method_name);
             }
-            "constructor_declaration" => {
-                let con_name_node = child.child_by_field_name("name").unwrap();
-                let con_name =
-                    source[con_name_node.start_byte()..con_name_node.end_byte()].to_string();
-
-                if con_name == name {
-                    if let Some(params_node) = child.child_by_field_name("parameters") {
-                        let mut cursor2 = params_node.walk();
-                        for param in params_node.children(&mut cursor2) {
-                            if param.kind() == "sea_parameter" {
-                                let type_node = param.child_by_field_name("type").unwrap();
-                                let name_node = param.child_by_field_name("name").unwrap();
-                                let type_text = transpile_type(
-                                    &source[type_node.start_byte()..type_node.end_byte()],
-                                );
-                                let name_text = source
-                                    [name_node.start_byte()..name_node.end_byte()]
-                                    .to_string();
-                                constructor_params.push((type_text, name_text));
-                            }
+            "init_declaration" => {
+                // collect constructor params — no name matching needed
+                if let Some(params_node) = child.child_by_field_name("parameters") {
+                    let mut cursor2 = params_node.walk();
+                    for param in params_node.children(&mut cursor2) {
+                        if param.kind() == "sea_parameter" {
+                            let type_node = param.child_by_field_name("type").unwrap();
+                            let name_node = param.child_by_field_name("name").unwrap();
+                            let type_text = transpile_type(
+                                &source[type_node.start_byte()..type_node.end_byte()],
+                            );
+                            let name_text = source
+                                [name_node.start_byte()..name_node.end_byte()]
+                                .to_string();
+                            constructor_params.push((type_text, name_text));
                         }
                     }
-                } else {
-                    methods.push(con_name);
                 }
             }
             _ => {}
@@ -158,23 +152,18 @@ fn transpile_import(
 ) -> String {
     let path_node = node.child_by_field_name("path").unwrap();
     let path_text = &source[path_node.start_byte()..path_node.end_byte()];
-
-    // strip quotes
     let path_str = path_text.trim_matches('"');
 
-    // resolve relative to current file
     let current_dir = current_file.parent().unwrap_or(std::path::Path::new("."));
     let imported_sea_path = current_dir.join(format!("{}.sea", path_str));
     let imported_c_path = current_dir.join(format!("{}.c", path_str));
     let imported_h_path = current_dir.join(format!("{}.h", path_str));
 
-    // check imported file exists
     if !imported_sea_path.exists() {
         eprintln!("Error: cannot find imported file {:?}", imported_sea_path);
         std::process::exit(1);
     }
 
-    // parse and transpile the imported file
     let (imported_tree, imported_source) = parse_sea(&imported_sea_path);
     let header = generate_header(&imported_tree, &imported_source, path_str);
     let imported_c = analyze(
@@ -185,12 +174,9 @@ fn transpile_import(
     );
 
     imported_c_files.push(imported_c_path.clone());
-    // write the generated .c file
     std::fs::write(&imported_c_path, &imported_c).unwrap();
-    // generate .h file with forward declarations
     std::fs::write(&imported_h_path, &header).unwrap();
 
-    // emit #include in current file
     format!("#include \"{}.h\"\n", path_str)
 }
 
@@ -218,53 +204,41 @@ fn generate_header(
             let name_node = child.child_by_field_name("name").unwrap();
             let class_name = &imported_source[name_node.start_byte()..name_node.end_byte()];
 
-            // full struct definition — not just forward declaration
             output.push_str(&format!("typedef struct {class_name} {class_name};\n"));
             output.push_str(&format!("struct {class_name} {{\n"));
 
-            // emit fields
             let mut cursor2 = child.walk();
             for member in child.children(&mut cursor2) {
                 if member.kind() == "field_declaration" {
                     let type_node = member.child_by_field_name("type").unwrap();
                     let name_node = member.child_by_field_name("name").unwrap();
-                    let type_text = &imported_source[type_node.start_byte()..type_node.end_byte()];
-                    let name_text = &imported_source[name_node.start_byte()..name_node.end_byte()];
+                    let type_text =
+                        &imported_source[type_node.start_byte()..type_node.end_byte()];
+                    let name_text =
+                        &imported_source[name_node.start_byte()..name_node.end_byte()];
                     let type_text = transpile_type(type_text);
                     output.push_str(&format!("    {type_text} {name_text};\n"));
                 }
             }
             output.push_str("};\n\n");
 
-            // single pass for constructor and method declarations
             let mut cursor3 = child.walk();
             for member in child.children(&mut cursor3) {
                 match member.kind() {
-                    "constructor_declaration" => {
-                        let con_name_node = member.child_by_field_name("name").unwrap();
-                        let con_name =
-                            &imported_source[con_name_node.start_byte()..con_name_node.end_byte()];
-
-                        if con_name == class_name {
-                            // real constructor
-                            let params_str = match member.child_by_field_name("parameters") {
-                                Some(p) => transpile_params(&p, imported_source),
-                                None => String::new(),
-                            };
-                            let params_part = if params_str.is_empty() {
-                                String::new()
-                            } else {
-                                format!(", {params_str}")
-                            };
-                            output.push_str(&format!(
-                                "void {class_name}_init({class_name} *self{params_part});\n"
-                            ));
+                    "init_declaration" => {
+                        // no name matching needed — init is always the constructor
+                        let params_str = match member.child_by_field_name("parameters") {
+                            Some(p) => transpile_params(&p, imported_source),
+                            None => String::new(),
+                        };
+                        let params_part = if params_str.is_empty() {
+                            String::new()
                         } else {
-                            // GLR matched method as constructor — declare as method
-                            output.push_str(&format!(
-                                "void {class_name}_{con_name}({class_name} *self);\n"
-                            ));
-                        }
+                            format!(", {params_str}")
+                        };
+                        output.push_str(&format!(
+                            "void {class_name}_init({class_name} *self{params_part});\n"
+                        ));
                     }
                     "method_declaration" => {
                         let method_node = member.child(0).unwrap();
@@ -345,31 +319,9 @@ fn transpile_class(
             "field_declaration" => {
                 output.push_str(&transpile_field(&child, source, 1));
             }
-            "constructor_declaration" => {
-                let con_name_node = child.child_by_field_name("name").unwrap();
-                let con_name = &source[con_name_node.start_byte()..con_name_node.end_byte()];
-
-                if con_name == name {
-                    methods.push_str(&transpile_constructor(&child, source, name, class_table));
-                } else {
-                    let method_name = con_name;
-                    let params_str = match child.child_by_field_name("parameters") {
-                        Some(p) => transpile_params(&p, source),
-                        None => String::new(),
-                    };
-                    let params_part = if params_str.is_empty() {
-                        String::new()
-                    } else {
-                        format!(", {params_str}")
-                    };
-                    let body = match child.child_by_field_name("body") {
-                        Some(b) => transpile_body(&b, source, 1, name, class_table),
-                        None => String::new(),
-                    };
-                    methods.push_str(&format!(
-                        "void {name}_{method_name}({name} *self{params_part}) {{\n{body}}}\n"
-                    ));
-                }
+            "init_declaration" => {
+                // no name matching needed — init is always the constructor
+                methods.push_str(&transpile_constructor(&child, source, name, class_table));
             }
             "method_declaration" => {
                 methods.push_str(&transpile_methods(&child, source, name, class_table));
@@ -562,7 +514,6 @@ fn transpile_body(
                         let var_name =
                             &source[var_name_node.start_byte()..var_name_node.end_byte()];
 
-                        // record type mapping
                         var_types.insert(var_name.to_string(), type_text.to_string());
 
                         let args_text = match new_expr.child_by_field_name("arguments") {
@@ -704,13 +655,11 @@ fn transpile_call(
                 };
                 format!("{class_name}_{method_text}(self{args_part})")
             } else {
-                // look up actual class name from var_types
                 let actual_class = var_types
                     .get(obj_text)
                     .map(|s| s.as_str())
                     .unwrap_or(obj_text);
 
-                // find which class actually owns this method
                 let owner_class = find_method_owner(method_text, actual_class, class_table);
 
                 let args_text = transpile_args(&args, source);
