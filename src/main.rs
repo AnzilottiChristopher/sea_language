@@ -1,4 +1,5 @@
 mod parser;
+mod sea_toml_parser;
 mod transcriber;
 use crate::{parser::parse_sea, transcriber::analyze};
 use clap::Parser;
@@ -19,11 +20,12 @@ enum Commands {
     Compile { file: PathBuf },
     Run { file: PathBuf },
     Check { file: PathBuf },
+    Init,
+    New { name: String },
 }
 
 fn run_lighthouse(file: &PathBuf) -> bool {
     let result = std::process::Command::new("lighthouse").arg(file).status();
-
     match result {
         Ok(status) if !status.success() => {
             eprintln!("Lighthouse found issues — fix them before compiling");
@@ -60,7 +62,6 @@ fn compile(c_path: &PathBuf, imported_c_files: &Vec<PathBuf>) -> PathBuf {
 
 fn main() {
     let cli = Cli::parse();
-
     match cli.command {
         Commands::Build { file } => {
             let (c_path, _) = transpile(&file);
@@ -86,6 +87,38 @@ fn main() {
         }
         Commands::Check { file } => {
             run_lighthouse(&file);
+        }
+        Commands::Init => {
+            let cwd = std::env::current_dir().expect("failed to get current directory");
+            let name = cwd
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("sea_project")
+                .to_string();
+
+            match sea_toml_parser::init_project(&name, &cwd) {
+                Ok(_) => println!("Initialized sea.toml in current directory"),
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::New { name } => {
+            let dir = PathBuf::from(&name);
+            if dir.exists() {
+                eprintln!("error: directory '{}' already exists", name);
+                std::process::exit(1);
+            }
+            std::fs::create_dir_all(&dir).expect("failed to create project directory");
+
+            match sea_toml_parser::init_project(&name, &dir) {
+                Ok(_) => println!("Created new project '{}'", name),
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
     }
 }
