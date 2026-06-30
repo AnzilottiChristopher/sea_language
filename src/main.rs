@@ -59,6 +59,27 @@ fn resolve_file(file: Option<PathBuf>) -> PathBuf {
     toml_dir.join(config.project.main)
 }
 
+fn resolve_out_dir() -> PathBuf {
+    let cwd = std::env::current_dir().expect("failed to get current directory");
+
+    if let Some(toml_path) = find_sea_toml(&cwd) {
+        if let Ok(config) = sea_toml_parser::load(&toml_path) {
+            let toml_dir = toml_path
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            let out_dir =
+                toml_dir.join(config.build.out_dir.unwrap_or_else(|| "build".to_string()));
+            std::fs::create_dir_all(&out_dir).expect("failed to create out_dir");
+            return out_dir;
+        }
+    }
+
+    // fallback: no sea.toml found, use ./build
+    let out_dir = cwd.join("build");
+    std::fs::create_dir_all(&out_dir).expect("failed to create build dir");
+    out_dir
+}
+
 fn run_lighthouse(file: &PathBuf) -> bool {
     let result = std::process::Command::new("lighthouse").arg(file).status();
     match result {
@@ -74,17 +95,22 @@ fn run_lighthouse(file: &PathBuf) -> bool {
     }
 }
 
-fn transpile(file: &PathBuf) -> (PathBuf, Vec<PathBuf>) {
+fn transpile(file: &PathBuf, out_dir: &PathBuf) -> (PathBuf, Vec<PathBuf>) {
     let (sea_tree, source) = parse_sea(file);
     let mut imported_c_files: Vec<PathBuf> = Vec::new();
     let output = analyze(sea_tree, &source, file, &mut imported_c_files);
-    let c_path = file.with_extension("c");
+
+    let stem = file.file_stem().unwrap_or_default();
+    let c_path = out_dir.join(stem).with_extension("c");
+
     std::fs::write(&c_path, &output).unwrap();
     (c_path, imported_c_files)
 }
 
-fn compile(c_path: &PathBuf, imported_c_files: &Vec<PathBuf>) -> PathBuf {
-    let bin_path = c_path.with_extension("");
+fn compile(c_path: &PathBuf, imported_c_files: &Vec<PathBuf>, out_dir: &PathBuf) -> PathBuf {
+    let stem = c_path.file_stem().unwrap_or_default();
+    let bin_path = out_dir.join(stem);
+
     let mut cmd = std::process::Command::new("gcc");
     cmd.arg(c_path);
     for c_file in imported_c_files {
@@ -100,26 +126,29 @@ fn main() {
     match cli.command {
         Commands::Build { file } => {
             let file = resolve_file(file);
-            let (c_path, _) = transpile(&file);
+            let out_dir = resolve_out_dir();
+            let (c_path, _) = transpile(&file, &out_dir);
             println!("Transpiled to {}", c_path.display());
         }
         Commands::Compile { file } => {
             let file = resolve_file(file);
+            let out_dir = resolve_out_dir();
             if !run_lighthouse(&file) {
                 std::process::exit(1);
             }
-            let (c_path, imported_c_files) = transpile(&file);
-            let bin_path = compile(&c_path, &imported_c_files);
+            let (c_path, imported_c_files) = transpile(&file, &out_dir);
+            let bin_path = compile(&c_path, &imported_c_files, &out_dir);
             println!("Compiled to {}", bin_path.display());
         }
         Commands::Run { file } => {
             let file = resolve_file(file);
+            let out_dir = resolve_out_dir();
             if !run_lighthouse(&file) {
                 std::process::exit(1);
             }
-            let (c_path, imported_c_files) = transpile(&file);
-            let bin_path = compile(&c_path, &imported_c_files);
-            std::process::Command::new(format!("./{}", bin_path.display()))
+            let (c_path, imported_c_files) = transpile(&file, &out_dir);
+            let bin_path = compile(&c_path, &imported_c_files, &out_dir);
+            std::process::Command::new(&bin_path)
                 .status()
                 .expect("failed to run binary");
         }
