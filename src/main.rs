@@ -16,12 +16,47 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    Build { file: PathBuf },
-    Compile { file: PathBuf },
-    Run { file: PathBuf },
-    Check { file: PathBuf },
+    Build { file: Option<PathBuf> },
+    Compile { file: Option<PathBuf> },
+    Run { file: Option<PathBuf> },
+    Check { file: Option<PathBuf> },
     Init,
     New { name: String },
+}
+
+fn find_sea_toml(start: &std::path::Path) -> Option<PathBuf> {
+    let mut dir = start.to_path_buf();
+    loop {
+        let candidate = dir.join("sea.toml");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+fn resolve_file(file: Option<PathBuf>) -> PathBuf {
+    if let Some(f) = file {
+        return f;
+    }
+
+    let cwd = std::env::current_dir().expect("failed to get current directory");
+    let toml_path = find_sea_toml(&cwd).unwrap_or_else(|| {
+        eprintln!("error: no file given and no sea.toml found in this directory or any parent");
+        std::process::exit(1);
+    });
+
+    let config = sea_toml_parser::load(&toml_path).unwrap_or_else(|e| {
+        eprintln!("error: failed to parse sea.toml: {}", e);
+        std::process::exit(1);
+    });
+
+    let toml_dir = toml_path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
+    toml_dir.join(config.project.main)
 }
 
 fn run_lighthouse(file: &PathBuf) -> bool {
@@ -33,7 +68,7 @@ fn run_lighthouse(file: &PathBuf) -> bool {
         }
         Err(_) => {
             eprintln!("Warning: lighthouse not found — skipping checks");
-            true // don't block if lighthouse not installed
+            true
         }
         _ => true,
     }
@@ -64,10 +99,12 @@ fn main() {
     let cli = Cli::parse();
     match cli.command {
         Commands::Build { file } => {
+            let file = resolve_file(file);
             let (c_path, _) = transpile(&file);
             println!("Transpiled to {}", c_path.display());
         }
         Commands::Compile { file } => {
+            let file = resolve_file(file);
             if !run_lighthouse(&file) {
                 std::process::exit(1);
             }
@@ -76,6 +113,7 @@ fn main() {
             println!("Compiled to {}", bin_path.display());
         }
         Commands::Run { file } => {
+            let file = resolve_file(file);
             if !run_lighthouse(&file) {
                 std::process::exit(1);
             }
@@ -86,6 +124,7 @@ fn main() {
                 .expect("failed to run binary");
         }
         Commands::Check { file } => {
+            let file = resolve_file(file);
             run_lighthouse(&file);
         }
         Commands::Init => {

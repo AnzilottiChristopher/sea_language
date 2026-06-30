@@ -37,8 +37,7 @@ fn collect_class_info(node: &Node, source: &String) -> ClassInfo {
             "method_declaration" => {
                 let method_node = child.child(0).unwrap();
                 let name_node = method_node.child_by_field_name("name").unwrap();
-                let method_name =
-                    source[name_node.start_byte()..name_node.end_byte()].to_string();
+                let method_name = source[name_node.start_byte()..name_node.end_byte()].to_string();
                 methods.push(method_name);
             }
             "init_declaration" => {
@@ -52,9 +51,8 @@ fn collect_class_info(node: &Node, source: &String) -> ClassInfo {
                             let type_text = transpile_type(
                                 &source[type_node.start_byte()..type_node.end_byte()],
                             );
-                            let name_text = source
-                                [name_node.start_byte()..name_node.end_byte()]
-                                .to_string();
+                            let name_text =
+                                source[name_node.start_byte()..name_node.end_byte()].to_string();
                             constructor_params.push((type_text, name_text));
                         }
                     }
@@ -212,10 +210,8 @@ fn generate_header(
                 if member.kind() == "field_declaration" {
                     let type_node = member.child_by_field_name("type").unwrap();
                     let name_node = member.child_by_field_name("name").unwrap();
-                    let type_text =
-                        &imported_source[type_node.start_byte()..type_node.end_byte()];
-                    let name_text =
-                        &imported_source[name_node.start_byte()..name_node.end_byte()];
+                    let type_text = &imported_source[type_node.start_byte()..type_node.end_byte()];
+                    let name_text = &imported_source[name_node.start_byte()..name_node.end_byte()];
                     let type_text = transpile_type(type_text);
                     output.push_str(&format!("    {type_text} {name_text};\n"));
                 }
@@ -292,6 +288,7 @@ fn transpile_class(
     class_table: &HashMap<String, ClassInfo>,
 ) -> String {
     let mut output = String::new();
+    let mut forward_decls = String::new();
     let mut methods = String::new();
 
     let name_node = node.child_by_field_name("name").unwrap();
@@ -320,13 +317,58 @@ fn transpile_class(
                 output.push_str(&transpile_field(&child, source, 1));
             }
             "init_declaration" => {
-                // no name matching needed — init is always the constructor
+                // forward declaration
+                let params_str = match child.child_by_field_name("parameters") {
+                    Some(p) => transpile_params(&p, source),
+                    None => String::new(),
+                };
+                let params_part = if params_str.is_empty() {
+                    String::new()
+                } else {
+                    format!(", {params_str}")
+                };
+                forward_decls.push_str(&format!("void {name}_init({name} *self{params_part});\n"));
+
+                // definition
                 methods.push_str(&transpile_constructor(&child, source, name, class_table));
             }
             "method_declaration" => {
+                // forward declaration
+                let method_node = child.child(0).unwrap();
+                let method_name_node = method_node.child_by_field_name("name").unwrap();
+                let method_name =
+                    &source[method_name_node.start_byte()..method_name_node.end_byte()];
+
+                let param_str = match method_node.child_by_field_name("parameters") {
+                    Some(p) => transpile_params(&p, source),
+                    None => String::new(),
+                };
+                let params_part = if param_str.is_empty() {
+                    String::new()
+                } else {
+                    format!(", {param_str}")
+                };
+                let return_type = match method_node.child_by_field_name("return_type") {
+                    Some(return_node) => match return_node.named_child(0) {
+                        Some(type_node) => match type_node.child_by_field_name("base") {
+                            Some(base_node) => transpile_type(
+                                &source[base_node.start_byte()..base_node.end_byte()],
+                            ),
+                            None => "void".to_string(),
+                        },
+                        None => "void".to_string(),
+                    },
+                    None => "void".to_string(),
+                };
+                forward_decls.push_str(&format!(
+                    "{return_type} {name}_{method_name}({name} *self{params_part});\n"
+                ));
+
+                // definition
                 methods.push_str(&transpile_methods(&child, source, name, class_table));
             }
             "drop_declaration" => {
+                forward_decls.push_str(&format!("void {name}_drop({name} *self);\n"));
                 methods.push_str(&transpile_drop(&child, source, name, class_table));
             }
             _ => {}
@@ -334,6 +376,8 @@ fn transpile_class(
     }
 
     output.push_str("};\n\n");
+    output.push_str(&forward_decls);
+    output.push_str("\n");
     output.push_str(&methods);
     output
 }
