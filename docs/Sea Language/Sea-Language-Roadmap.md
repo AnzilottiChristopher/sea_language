@@ -288,15 +288,120 @@ Depends on everything else. Build each LSP feature separately in this order:
 
 ---
 
-### The dependency chain visualized
 
+
+**Phase 1 — LSP cleanup (now)**  
+Finish the remaining LSP items since they're small and unblock a better dev experience for everything after:
+
+- Lighthouse basic diagnostics (misspellings, undefined variables)
+- The third thing you couldn't remember
+- Workspace/document symbols
+
+---
+
+**Phase 2 — Ownership sigils in the grammar and transpiler**
+
+Add `*`, `&`, `~`, `^` to the tree-sitter grammar so they're valid on field declarations:
+
+sea
+
+```sea
+class Node {
+    *Dog owned;      // owning pointer
+    &Dog borrowed;   // borrow/reference
+    ~Dog shared;     // ref-counted
+    ^Dog weak;       // weak reference
+}
 ```
-symbol_table.rs
-    ↓
-indexer.rs
-    ↓
-main.rs
-    ↓
-backend.rs
-    4a → 4b → 4c → 4d → 4e
+
+This is purely syntactic at this stage — the grammar accepts them, the transpiler strips them and emits the right C pointer type, but Lighthouse doesn't enforce any rules yet. The transpiler output would be:
+
+c
+
+```c
+struct Node {
+    Dog* owned;      // * and & both become raw pointer for now
+    Dog* shared;     // ~ becomes pointer, ref counting deferred
+    Dog* weak;       // ^ becomes pointer, weak logic deferred
+};
 ```
+
+This unblocks writing real Sea code with ownership annotations before enforcement exists, so you can test the syntax and build up test cases for Lighthouse later.
+
+---
+
+**Phase 3 — `foreach` keyword**
+
+Add `foreach` to the grammar and transpiler. This is self-contained and doesn't depend on generics or stdlib:
+
+sea
+
+```sea
+foreach (Animal a : animals) {
+    a.bark();
+}
+```
+
+Transpiles to a C `for` loop over an array. The exact design depends on whether you want it to work on raw arrays first, then hook into an `Iterable` interface later when stdlib exists. Raw arrays first is the pragmatic call.
+
+---
+
+**Phase 4 — Stdlib with `void*` placeholder**
+
+Implement `Vec`, `String`, `Option` using hidden `void*` internally so users never see it — they write `Vec<Dog>` in Sea syntax and the compiler accepts it, but the generated C uses `void*` under the hood. This requires:
+
+- Grammar changes to accept `<T>` syntax in type positions (just parsing, no real generic logic yet)
+- Transpiler emits `void*` based C structs for stdlib types only
+- `String` is the simplest since it's essentially `char*` with methods
+- `Vec` is a dynamic array with `push`, `pop`, `get`, `len`
+- `Option` is `some`/`none` with `map`, `and_then`, `unwrap_or_else`
+
+Also need **static methods** (`Option.some(x)`, `Vec.new()`) which Sea doesn't have yet — design and add those here.
+
+---
+
+**Phase 5 — Auto-drop at scope exit (first Lighthouse tier)**
+
+Now that sigils exist in the grammar and stdlib classes exist, implement the first real Lighthouse enforcement:
+
+- Track `*` owned fields — when the owning object goes out of scope, emit a `_drop` call automatically
+- Detect double-free (owning pointer moved then used again)
+- Detect leaks (owning pointer goes out of scope with no drop)
+
+This is the first pass that makes ownership _enforced_ rather than just annotated.
+
+---
+
+**Phase 6 — Real generics (monomorphization)**
+
+Now that stdlib exists with `void*` placeholders and the grammar already parses `<T>` syntax, swap the internals:
+
+- Transpiler gets a new **instantiation collection pass** — walk the AST and find every usage of `Vec<Dog>`, `Option<String>` etc.
+- For each unique instantiation, stamp out a concrete C struct with `T` replaced by the actual type: `Vec_Dog`, `Option_String`
+- Replace all `void*` in stdlib with the concrete type
+- gcc now type-checks the generated output as a second safety layer
+- Lighthouse can now also enforce generic constraints if you add them later
+
+---
+
+**Phase 7 — Borrow checking (second Lighthouse tier)**
+
+With generics and auto-drop working:
+
+- Enforce `&` borrow rules — a borrowed reference can't outlive the owner
+- Detect use-after-free on `&` references
+- Enforce `~` ref counting — emit actual ref count increment/decrement in generated C
+- Enforce `^` weak references — null check before use
+
+---
+
+**The key insight in this ordering**
+
+Generics come _after_ stdlib rather than before, because:
+
+1. You can parse `<T>` syntax in phase 4 without implementing monomorphization
+2. stdlib with `void*` gives you real usable classes immediately
+3. Monomorphization in phase 6 is then a pure internal swap with no Sea-facing syntax changes
+4. Borrow checking in phase 7 is much easier to implement correctly once you have concrete monomorphized types rather than `void*` everywhere
+
+Does this ordering make sense, or do you want to adjust any of the phases?

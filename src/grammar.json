@@ -10186,15 +10186,7 @@
       "members": [
         {
           "type": "FIELD",
-          "name": "base",
-          "content": {
-            "type": "SYMBOL",
-            "name": "base_type"
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "modifier",
+          "name": "ownership",
           "content": {
             "type": "CHOICE",
             "members": [
@@ -10208,6 +10200,14 @@
                   {
                     "type": "STRING",
                     "value": "&"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "~"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "^"
                   }
                 ]
               },
@@ -10215,6 +10215,14 @@
                 "type": "BLANK"
               }
             ]
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "base",
+          "content": {
+            "type": "SYMBOL",
+            "name": "base_type"
           }
         }
       ]

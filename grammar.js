@@ -216,8 +216,9 @@ export default grammar(C, {
 
         type: ($) =>
             seq(
+                field("ownership", optional(choice("*", "&", "~", "^"))),
                 field("base", $.base_type),
-                field("modifier", optional(choice("*", "&"))),
+                // field("modifier", optional(choice("*", "&"))),
             ),
 
         return_type: ($) => choice($.type, "void", seq("void", "*")),
